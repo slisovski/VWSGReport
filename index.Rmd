@@ -1,0 +1,244 @@
+---
+title: Migration pattern of Curlew sandpipers and Red-necked stints
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    theme: cosmo
+---
+
+```{r fig.align='center', echo=FALSE, size = "tiny"}
+knitr::include_graphics('images/Art.png', dpi = NA)
+```
+
+# Breeding sites
+
+```{r map, echo = FALSE, message=FALSE, warning=FALSE}
+library(rgdal)
+library(raster)
+library(sf)
+library(maptools)
+  data(wrld_simpl)
+
+load("/Users/slisovski/Dropbox/Data/RemoteSensedData/BlueMarble/BlueMarble_Raster/BlueMarble_210.RData")
+
+centre <- c(130, 70)
+prj <- sprintf("+proj=ortho +lon_0=%f +lat_0=%f +ellps=WGS84", centre[1], centre[2])
+
+dat_sim     <- data.frame(long = centre[1], lat = centre[2])
+dat_sf      <- st_as_sf(dat_sim, coords = c("long", "lat"), crs = CRS(proj4string(wrld_simpl))) %>% st_transform(CRS(prj))
+ext_buff    <- st_buffer(dat_sf, dist = 2e6)
+
+  ###
+  wdist0 <- st_as_sf(readOGR("/Users/slisovski/Dropbox/Data/GeoDat/BirdLife_Distributions/Waders/Wader_2.shp", verbose = FALSE))
+    ind  <- which(wdist0$SCINAME%in%c("Calidris ferruginea", "Calidris ruficollis" ) & wdist0$SEASONAL==2)
+  wdist  <- wdist0[ind,] %>% st_transform(., CRS(prj)) %>% st_buffer(0) %>% st_intersection(ext_buff)
+
+r1  <- suppressWarnings(projectExtent(bm, crs = prj))
+extent(r1) <- extent(r1) + 1e6
+r1 <- brick(r1, r1, r1)
+
+# res(r1) <- 12500
+
+vals <- extract(bm, project(coordinates(r1), prj, inv = TRUE))
+r1   <- suppressWarnings(setValues(r1, vals))
+
+r1Mask <- crop(mask(r1, as(ext_buff, "Spatial")), extent(ext_buff))
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.show=TRUE, fig.width=10, fig.height=7, fig.cap="Figure 1: Estimated breeding sites of tracked Curlew sandpipers (left) and Red-necked stints (right). The colored areas indicate the breeding range derived from BirdLife. The rectangles are breeding sites during the Arctic summer in 2018 and circles are estaimted sites during 2019."}
+library(xtable)
+library(knitr)
+
+cs  <- readxl::read_xlsx("~/Dropbox/Science/Projects/VWSG/TagData/TagData_CurSand.xlsx", sheet = "Analyses")
+rns <- readxl::read_xlsx("~/Dropbox/Science/Projects/VWSG/TagData/TagData_RNS.xlsx", sheet = "Analyses")
+
+tab <- data.frame(sp = c(rep("CurSand", nrow(cs)), rep("RNS", nrow(rns))), year = c(cs$Year, rns$Year), 
+                  project(matrix(as.numeric(c(cs$Breed_Lon, rns$Breed_Lon, cs$Breed_Lat, rns$Breed_Lat)), ncol = 2, byrow = F), prj))
+
+
+opar <- par(mfrow = c(1,2), mar = c(1,1,1,1))
+
+plot(as(ext_buff, "Spatial"), border = 1, col = NA)
+plotRGB(r1Mask, alpha = 220, add = T)
+plot(as(ext_buff, "Spatial"), border = "black", col = NA, add = T, lwd = 2)
+plot(as(wdist[wdist$SCINAME=="Calidris ferruginea",], "Spatial"), 
+     col = adjustcolor("firebrick", alpha.f = 0.25), border = "firebrick", add = T)
+with(subset(tab, sp == "CurSand"), points(X1, X2, pch = ifelse(year==2019, 21, 22), col = "grey90", bg = adjustcolor("firebrick", alpha.f = 0.8), cex = 3))
+mtext("Curlew sandpiper", 3, cex = 1.2, line = -2)
+
+plot(as(ext_buff, "Spatial"), border = 1, col = NA)
+plotRGB(r1Mask, alpha = 220, add = T)
+plot(as(ext_buff, "Spatial"), border = "black", col = NA, add = T, lwd = 2)
+plot(as(wdist[wdist$SCINAME=="Calidris ruficollis",], "Spatial"), 
+     col = adjustcolor("firebrick", alpha.f = 0.25), border = "orange", add = T)
+with(subset(tab, sp == "RNS"), points(X1, X2, pch = ifelse(year==2019, 21, 22), col = "grey90", bg = adjustcolor("orange", alpha.f = 0.8), cex = 3))
+mtext("Red-necked stint", 3, cex = 1.2, line = -2)
+
+par(opar)
+```
+
+# Migration routes
+
+## Northward migration
+
+```{r fig.align='center', echo=FALSE}
+knitr::include_graphics(path="images/Northward.gif")
+```
+
+## Southward migration
+
+```{r fig.align='center', echo=FALSE}
+knitr::include_graphics(path="images/Southward.gif")
+```
+
+# Stoppover sites (preliminary)
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+flsCS <- list.files("~/Deakin University/Marcel Klaassen - Klaassen-Lab/Geolocation/Results/CurlewSandpiper", 
+                                                    pattern = "*_Grouped_movementSummary.csv", full.names = T)
+
+cs <- data.frame(sp = "cs", do.call("rbind", lapply(flsCS, function(x) {
+  sm <- read.csv(x)
+  sm$start <- as.numeric(as.POSIXct(sm$StartTime, tz = "GMT"))
+  sm$end   <- as.numeric(as.POSIXct(sm$EndTime, tz = "GMT"))
+  subset(sm, Days>0 & Type%in%c(1,3), select = c("Lon.50.", "Lat.50.", "Days", "Type"))
+})))
+
+flsRNS <- list.files("~/Deakin University/Marcel Klaassen - Klaassen-Lab/Geolocation/Results/RedNeckedStint", 
+                                                    pattern = "*_Grouped_movementSummary.csv", full.names = T)
+
+rns <- data.frame(sp = "rns", do.call("rbind", lapply(flsRNS, function(x) {
+  sm <- read.csv(x)
+  sm$start <- as.numeric(as.POSIXct(sm$StartTime, tz = "GMT"))
+  sm$end   <- as.numeric(as.POSIXct(sm$EndTime, tz = "GMT"))
+  subset(sm, Days>0 & Type%in%c(1,3), select = c("Lon.50.", "Lat.50.", "Days", "Type"))
+})))
+
+tab <- rbind(cs, rns)
+
+
+library(rgdal)
+library(sf)
+library(raster)
+
+xlim <- c(85, 200)
+ylim <- c(-50, 79)
+
+land <- rnaturalearth::countries110
+
+xcentre <- round(xlim[1] + diff(xlim)/2)
+ycentre <- round(ylim[1] + diff(ylim)/2)
+proj <- sprintf("%s +lon_0=%f +lat_0=%f +ellps=WGS84", "+proj=laea", xcentre, ycentre)
+
+map0 <- st_as_sf(spTransform(land, CRS(proj)))
+  
+dat_sim     <- data.frame(long = xcentre, lat = ycentre)
+dat_sf      <- st_as_sf(dat_sim, coords = c("long", "lat"), crs = CRS(proj4string(land))) %>% st_transform(CRS(proj))
+ext_buff    <- st_buffer(dat_sf, dist = 6e6)
+
+sf_map <- st_intersection(st_buffer(map0, 0), ext_buff)
+map    <- as(sf_map, "Spatial")
+```
+
+
+```{r, echo=FALSE, fig.show=T, fig.width=15, fig.height=15, message=FALSE, warning=FALSE, fig.cap="The maps show the stopover sites of Curlew sandpipers (left) and Red-necked stints (right) for both migratory seasons. Each dot represents a cluster of stopover sites, meaning that individual stopover sites are merged together. The size of the circles represent the sum of the time the individuals spent in the cluster."}
+
+crds <- as.data.frame(project(as.matrix(tab[,2:3]), proj))
+
+sts    <- st_as_sf(crds, coords = c("Lon.50.", "Lat.50."), crs = CRS(proj))
+distM  <- st_distance(sts, sts)
+
+db  <- fpc::dbscan(unclass(distM), eps = 100000, MinPts = 1, method = "dist")
+
+centr <- aggregate(crds, by = list(db$cluster), median)
+tm    <- aggregate(tab$Days, by = list(tab$sp, tab$Type, db$cluster), sum)
+
+
+opar <- par(mfrow = c(2,2), mar = c(0,0,0,0), oma = c(0,2,2,0))
+
+plot(map, border = NA, col = "grey80")
+plot(as(ext_buff, "Spatial"), add = T)
+ss <- subset(tm, Group.1=="cs" & Group.2==1)
+points(centr[ss$Group.3,2:3], pch = 21, bg = adjustcolor("firebrick", alpha.f = 0.5),
+       cex = approx(range(tm$x), c(0.5,6), ss$x)$y)
+mtext("Southward migration", 2, line = 0, cex = 2)
+mtext("Curlew sandpiper", 3, line = 0, cex = 2)
+
+plot(map, border = NA, col = "grey80")
+plot(as(ext_buff, "Spatial"), add = T)
+ss <- subset(tm, Group.1=="rns" & Group.2==1)
+points(centr[ss$Group.3,2:3], pch = 21, bg = adjustcolor("orange", alpha.f = 0.5),
+       cex = approx(range(tm$x), c(0.5,6), ss$x)$y)
+mtext("Red-necked stint", 3, line = 0, cex = 2)
+
+plot(map, border = NA, col = "grey80")
+plot(as(ext_buff, "Spatial"), add = T)
+ss <- subset(tm, Group.1=="cs" & Group.2==3)
+points(centr[ss$Group.3,2:3], pch = 21, bg = adjustcolor("firebrick", alpha.f = 0.5),
+       cex = approx(range(tm$x), c(0.5,6), ss$x)$y)
+mtext("Southward migration", 2, line = 0, cex = 2)
+
+
+plot(map, border = NA, col = "grey80")
+plot(as(ext_buff, "Spatial"), add = T)
+ss <- subset(tm, Group.1=="rns" & Group.2==3)
+points(centr[ss$Group.3,2:3], pch = 21, bg = adjustcolor("orange", alpha.f = 0.5),
+       cex = approx(range(tm$x), c(0.5,6), ss$x)$y)
+
+
+par(opar)
+```
+
+# The odd Curlews
+
+Two Curlew sandpipers showed remarkable migrations. BQ877 (KAP) is the first tracked shorebrid from the EAAF migrating west of the Himalayas during southward migration. BJ573 (DKH) remained in Burma for the non-breeding season 2019 before migrating back north to the breeding site. On the way south, the logger stopped in the tropics but the bird has be recaptured on the deployment site in 2020.
+
+## BQ877
+
+```{r fig.align='center', echo=FALSE}
+knitr::include_graphics(path="images/BQ877.gif")
+```
+
+## BJ573
+
+```{r fig.align='center', echo=FALSE}
+knitr::include_graphics(path="images/BJ573.gif")
+```
+
+# Tags
+
+```{r, echo = FALSE, results = "asis"}
+library(xtable)
+library(knitr)
+cs <- readxl::read_xlsx("data/TagTable.xlsx", )
+# names(cs) <- c("Flag", "GeoID", "Species", "Location", "Year", "Depart1", "Arrival1", "Depart2", "Arrival2")
+options(knitr.kable.NA = '')
+kable(subset(cs, Species=="Curlew Sandpiper"), caption = "Table 1: Succesfully retrieved Curlew sandpipers.", )
+```
+
+```{r, echo = FALSE, results = "asis"}
+library(xtable)
+library(knitr)
+cs <- readxl::read_xlsx("Data/TagTable.xlsx", )
+# names(cs) <- c("Flag", "GeoID", "Species", "Location", "Year", "Depart1", "Arrival1", "Depart2", "Arrival2")
+options(knitr.kable.NA = '')
+kable(subset(cs, Species=="Red-necked stint"), caption = "Table 2: Succesfully retrieved Red-necked stints.", )
+```
+
+# Acknowledgements
+
+As always, this project was made possible by the many enthusiastic members of the Victorian Wader Study Group. 
+
+The report was compiled by:
+
+Simeon Lisovski^1,2^, Ken Gosbell^2^ and Marcel Klaassen^2,3^
+
+^1^ Alfred-Wegener-Institute Helmholz Centre for Marine and Polar Research, Potsdam, Germany. ^2^ Victorian Wader Study Group, Australia. ^3^ Deakin University, Centre for Integrative Ecology, Geelong, Australia. \
+
+
+```{r fig.align='center', echo=FALSE, size = "tiny"}
+knitr::include_graphics('images/Affiliations.png', dpi = NA)
+```
