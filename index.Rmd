@@ -1,15 +1,10 @@
 ---
-title: "VWSGReport"
-site: distill::distill_website
+title: "About this site"
 description: |
-  Welcome to the website. I hope you enjoy it!
+  Some additional details about the website
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-
-# Learn more about creating websites with Distill at:
-# https://rstudio.github.io/distill/website.html
-
 ```
 
