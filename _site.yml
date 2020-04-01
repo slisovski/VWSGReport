@@ -1,10 +1,13 @@
-name: "VWSG Report"
-title: "VWSG Report"
+name: "VWSGReport"
+title: "VWSG Reports"
 description: |
   VWSG Report
-output_dir: "docs"
+output_dir: "doc"
 navbar:
+  logo:
+    image: images/logo.png
+    href: http://www.vwsg.org.au/
   right:
-    - text: "Report: Curlew sandpiper & Red-necked stint"
-      href: Report01.html
+    - text: "Curlew sandpiper & Red-necked stints"
+      href: about.html
 output: distill::distill_article
