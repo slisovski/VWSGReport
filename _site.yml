@@ -2,7 +2,7 @@ name: "VWSGReport"
 title: "VWSGReport"
 description: |
   VWSGReport
-output_dir: "_site"
+output_dir: "docs"
 navbar:
   right:
     - text: "Home"
