@@ -2,7 +2,7 @@ name: "VWSGReport"
 title: "VWSG Reports"
 description: |
   VWSG Report
-output_dir: "doc"
+output_dir: "docs"
 navbar:
   logo:
     image: images/logo.png
