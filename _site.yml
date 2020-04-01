@@ -9,5 +9,5 @@ navbar:
     href: http://www.vwsg.org.au/
   right:
     - text: "Curlew sandpiper & Red-necked stints"
-      href: about.html
+      href: index.html
 output: distill::distill_article
