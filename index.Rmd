@@ -2,11 +2,6 @@
 title: "Migration pattern of Curlew sandpipers and Red-necked stints"
 description: ""
 site: distill::distill_website
-output: 
- html_document:
-    theme: "journal"
-    toc: true
-    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -197,7 +192,7 @@ points(centr[ss$Group.3,2:3], pch = 21, bg = adjustcolor("orange", alpha.f = 0.5
 par(opar)
 ```
 
-# The odd Curlews
+# The odd Curlew sands
 
 Two Curlew sandpipers showed remarkable migrations. BQ877 (KAP) is the first tracked shorebrid from the EAAF migrating west of the Himalayas during southward migration. BJ573 (DKH) remained in Burma for the non-breeding season 2019 before migrating back north to the breeding site. On the way south, the logger stopped in the tropics but the bird has be recaptured on the deployment site in 2020.
 
