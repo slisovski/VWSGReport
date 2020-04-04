@@ -8,10 +8,6 @@ site: distill::distill_website
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-```{r fig.align='center', echo=FALSE, size = "tiny"}
-knitr::include_graphics('images/Art.png', dpi = NA)
-```
-
 # Breeding sites
 
 ```{r map, echo = FALSE, message=FALSE, warning=FALSE}
